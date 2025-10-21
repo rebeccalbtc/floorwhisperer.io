@@ -1,0 +1,69 @@
+const axios = require('axios');
+
+// Configuration
+const API_BASE = 'https://api-mainnet.magiceden.dev/v2/ord/btc';
+const API_KEY = 'your_api_key_here';  // Get from Magic Eden docs; leave '' if not needed
+const POLL_INTERVAL_MS = 300000;  // 5 minutes
+const THRESHOLD = 0.001;  // Example threshold in BTC
+const MODE = 'collection';  // 'collection' or 'inscription'
+const COLLECTION_SYMBOL = 'bitcoin-puppets';  // For collection mode (e.g., 'node-monkes')
+const INSCRIPTION_ID = 'your_inscription_id_here';  // For inscription mode (e.g., 'bc1p...')
+
+async function fetchFloorPrice(symbol) {
+  try {
+    const response = await axios.get(`${API_BASE}/collections/${symbol}/listings?limit=1&sortBy=priceAsc`, {
+      headers: API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {},
+    });
+    const listings = response.data;
+    if (listings.length > 0) {
+      return listings[0].price / 1e8;  // Convert satoshis to BTC
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching floor price: ${error.message}`);
+    return null;
+  }
+}
+
+async function fetchInscriptionPrice(id) {
+  try {
+    const response = await axios.get(`${API_BASE}/tokens/${id}`, {
+      headers: API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {},
+    });
+    const token = response.data;
+    if (token.listed) {
+      return token.price / 1e8;  // Convert satoshis to BTC
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching inscription price: ${error.message}`);
+    return null;
+  }
+}
+
+async function checkPriceAlert() {
+  let price = null;
+  if (MODE === 'collection') {
+    price = await fetchFloorPrice(COLLECTION_SYMBOL);
+    if (price) {
+      console.log(`Current floor price for ${COLLECTION_SYMBOL}: ${price} BTC`);
+    }
+  } else if (MODE === 'inscription') {
+    price = await fetchInscriptionPrice(INSCRIPTION_ID);
+    if (price) {
+      console.log(`Current price for inscription ${INSCRIPTION_ID}: ${price} BTC`);
+    }
+  }
+
+  if (price && price < THRESHOLD) {
+    // Alert logic: Log for now; replace with email or webhook
+    console.log(`ALERT! Price dropped below ${THRESHOLD} BTC: ${price} BTC`);
+    // Example: Send email (add nodemailer here if needed)
+  } else if (price === null) {
+    console.log('No price data available (not listed?).');
+  }
+}
+
+// Run immediately and then every interval
+checkPriceAlert();
+setInterval(checkPriceAlert, POLL_INTERVAL_MS);
