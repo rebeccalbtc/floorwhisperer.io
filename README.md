@@ -1,2 +1,2 @@
 # floorwhisperer.io
-Webapp: price alerts for Ordinals on Magic Eden 
+Webapp: price alerts for Ordinals and inscriptions on Magic Eden 
